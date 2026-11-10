@@ -18,8 +18,8 @@ class CompilationEngine extends Parser {
   // O Parser XML escreve em XmlWriter; aqui não emitimos XML.
   consume(expected) {
     const token = this.peek();
-    if (!token) this.fail(\`esperado \${expected}\`);
-    if (!this._isValid(token, expected)) this.fail(\`esperado \${expected}, encontrado \${token.value}\`);
+    if (!token) this.fail(`esperado ${expected}`);
+    if (!this._isValid(token, expected)) this.fail(`esperado ${expected}, encontrado ${token.value}`);
     return this.advance();
   }
   type() {
@@ -28,7 +28,7 @@ class CompilationEngine extends Parser {
   }
   parse() {
     this.class();
-    if (this.peek()) this.fail(\`token extra: \${this.peek().value}\`);
+    if (this.peek()) this.fail(`token extra: ${this.peek().value}`);
     return this.vm.toString();
   }
   class() {
@@ -88,7 +88,7 @@ class CompilationEngine extends Parser {
   subroutineBody() {
     this.consume('{');
     while (this.match('var')) this.varDec();
-    this.vm.writeFunction(\`\${this.className}.\${this.subroutineName}\`, this.symbols.varCount('var'));
+    this.vm.writeFunction(`${this.className}.${this.subroutineName}`, this.symbols.varCount('var'));
     this.statements();
     this.consume('}');
   }
@@ -107,12 +107,12 @@ class CompilationEngine extends Parser {
   }
   symbol(name) {
     const entry = this.symbols.resolve(name);
-    if (!entry) this.fail(\`variável não declarada: \${name}\`);
+    if (!entry) this.fail(`variável não declarada: ${name}`);
     return entry;
   }
   pushVar(name) { const s = this.symbol(name); this.vm.writePush(this.segment(s), s.index); }
   popVar(name) { const s = this.symbol(name); this.vm.writePop(this.segment(s), s.index); }
-  label(prefix) { return \`\${this.className}.\${this.subroutineName}$\${prefix}\${this.labelIndex++}\`; }
+  label(prefix) { return `${this.className}.${this.subroutineName}$${prefix}${this.labelIndex++}`; }
   statements() {
     while (this.match('let', 'if', 'while', 'do', 'return')) {
       if (this.match('let')) this.letStatement();
@@ -187,7 +187,7 @@ class CompilationEngine extends Parser {
     if (!token) this.fail('termo esperado');
     if (['integerConstant','integer','int'].includes(token.type)) {
       const value = Number(this.advance().value);
-      if (!Number.isInteger(value) || value < 0 || value > 32767) this.fail(\`constante fora do intervalo: \${value}\`);
+      if (!Number.isInteger(value) || value < 0 || value > 32767) this.fail(`constante fora do intervalo: ${value}`);
       this.vm.writePush('constant', value);
       return;
     }
@@ -221,7 +221,7 @@ class CompilationEngine extends Parser {
       this.pushVar(name);
       return;
     }
-    this.fail(\`termo inválido: \${token.value}\`);
+    this.fail(`termo inválido: ${token.value}`);
   }
   subroutineCall() {
     const first = this.consume('identifier').value;
@@ -230,11 +230,11 @@ class CompilationEngine extends Parser {
       this.consume('.');
       const second = this.consume('identifier').value;
       if (this.symbols.resolve(first)) this.fail('chamadas de métodos em objetos serão implementadas no commit 03');
-      functionName = \`\${first}.\${second}\`;
+      functionName = `${first}.${second}`;
     } else {
       const kind = this.classSubroutineKinds.get(first);
-      if (kind !== 'function') this.fail(\`chamada interna não suportada: \${first} (métodos no commit 03)\`);
-      functionName = \`\${this.className}.\${first}\`;
+      if (kind !== 'function') this.fail(`chamada interna não suportada: ${first} (métodos no commit 03)`);
+      functionName = `${this.className}.${first}`;
     }
     this.consume('(');
     const count = this.expressionList();
