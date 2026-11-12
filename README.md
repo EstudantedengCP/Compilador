@@ -136,6 +136,29 @@ O programa recebe um arquivo `.jack`, realiza a análise léxica e sintática e 
 
 Em caso de erro léxico ou sintático, a mensagem é exibida e o programa termina com código de saída 1.
 
+### Projeto 11 — compilar para código VM
+
+```bash
+node main.js <arquivo.jack | diretório>
+```
+
+O programa aceita um único arquivo `.jack` ou um diretório. Em um diretório, compila apenas os arquivos `.jack` do primeiro nível daquela pasta (subpastas não são percorridas). Cada arquivo é compilado individualmente e o `.vm` correspondente é salvo na mesma pasta do `.jack`.
+
+Exemplos de execução:
+
+```bash
+node main.js Main.jack     # gera Main.vm
+node main.js pasta/        # gera um .vm para cada .jack da pasta
+```
+
+Para cada arquivo é exibido `OK` ou `ERRO` com a mensagem do erro, seguido de um resumo. Se algum arquivo falhar, os demais continuam sendo compilados e o programa termina com código de saída 1.
+
+### Testes do compilador (código VM)
+
+```bash
+node --test tests/compiler/compiler.test.js
+```
+
 ## Testes e validação
 
 Foram realizados testes para verificar o reconhecimento dos tokens, a análise sintática, a geração de XML e o tratamento de entradas inválidas.
