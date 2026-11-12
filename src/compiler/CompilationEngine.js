@@ -282,15 +282,19 @@ class CompilationEngine extends Parser {
       const method = this.consume('identifier').value;
       const receiver = this.symbols.resolve(first);
       if (receiver) {
-        if (receiver.type === this.className && this.classSubroutineKinds.get(method) && this.classSubroutineKinds.get(method) !== 'method') {
-          this.fail(`sub-rotina ${method} não é método de instância`);
+        if (receiver.type === this.className) {
+          const targetKind = this.classSubroutineKinds.get(method);
+          if (!targetKind) this.fail(`sub-rotina não declarada: ${method}`);
+          if (targetKind !== 'method') this.fail(`sub-rotina ${method} não é método de instância`);
         }
         this.pushVar(first);
         implicitArgs = 1;
         functionName = `${receiver.type}.${method}`;
       } else {
-        if (first === this.className && this.classSubroutineKinds.get(method) === 'method') {
-          this.fail(`método ${method} exige um objeto receptor`);
+        if (first === this.className) {
+          const targetKind = this.classSubroutineKinds.get(method);
+          if (!targetKind) this.fail(`sub-rotina não declarada: ${method}`);
+          if (targetKind === 'method') this.fail(`método ${method} exige um objeto receptor`);
         }
         functionName = `${first}.${method}`;
       }
