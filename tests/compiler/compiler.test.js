@@ -88,3 +88,62 @@ test('chamadas qualificadas à própria classe rejeitam nomes inexistentes', () 
   assert.throws(() => compile('class A { function void f() { do A.missing(); return; } }'), /sub-rotina não declarada/);
   assert.throws(() => compile('class A { function void f(A a) { do a.missing(); return; } }'), /sub-rotina não declarada/);
 });
+
+test('sub-rotinas duplicadas: duas functions com o mesmo nome', () => {
+  assert.throws(() => compile('class A { function void f() { return; } function void f() { return; } }'),
+    /sub-rotina duplicada: f/);
+});
+
+test('sub-rotinas duplicadas: dois methods com o mesmo nome', () => {
+  assert.throws(() => compile('class A { method int m() { return 1; } method int m() { return 2; } }'),
+    /sub-rotina duplicada: m/);
+});
+
+test('sub-rotinas duplicadas: function e method com o mesmo nome', () => {
+  assert.throws(() => compile('class A { function void x() { return; } method void x() { return; } }'),
+    /sub-rotina duplicada: x/);
+  assert.throws(() => compile('class A { constructor A new() { return this; } function A new() { return null; } }'),
+    /sub-rotina duplicada: new/);
+});
+
+test('sub-rotina duplicada informa linha e coluna da segunda declaração', () => {
+  assert.throws(() => compile('class A {\n  function void f() { return; }\n  function void f() { return; }\n}'),
+    /linha 3, coluna 17\): sub-rotina duplicada: f/);
+});
+
+test('return: void com "return;" e não-void com expressão continuam válidos', () => {
+  assert.equal(compile('class A { function void f() { return; } }'), 'function A.f 0\npush constant 0\nreturn\n');
+  assert.equal(compile('class A { function int g() { return 5; } }'), 'function A.g 0\npush constant 5\nreturn\n');
+  assert.equal(compile('class A { method boolean h() { return true; } }'),
+    'function A.h 0\npush argument 0\npop pointer 0\npush constant 0\nnot\nreturn\n');
+});
+
+test('return: "return;" em sub-rotina não-void é rejeitado', () => {
+  assert.throws(() => compile('class A { function int f() { return; } }'), /deve retornar um valor do tipo int/);
+  assert.throws(() => compile('class A { method boolean m() { return; } }'), /deve retornar um valor do tipo boolean/);
+  assert.throws(() => compile('class A { function Array f() { return; } }'), /deve retornar um valor do tipo Array/);
+});
+
+test('return: "return expressão;" em sub-rotina void é rejeitado', () => {
+  assert.throws(() => compile('class A { function void f() { return 1; } }'), /void f não pode retornar um valor/);
+  assert.throws(() => compile('class A { method void m() { return this; } }'), /void m não pode retornar um valor/);
+  assert.throws(() => compile('class A { function void f() { var int x; let x = 1; return x + 1; } }'), /void f não pode retornar um valor/);
+});
+
+test('return: validação usa o tipo da sub-rotina atual, inclusive em blocos aninhados', () => {
+  assert.throws(() => compile('class A { function int f(boolean b) { if (b) { return; } return 1; } }'), /deve retornar um valor/);
+  assert.throws(() => compile('class A { function void f() { while (true) { return 0; } return; } }'), /não pode retornar um valor/);
+  // O tipo da primeira sub-rotina não vaza para a seguinte.
+  assert.doesNotThrow(() => compile('class A { function int f() { return 1; } function void g() { return; } }'));
+});
+
+test('construtor: tipo de retorno igual ao nome da classe é aceito', () => {
+  const vm = compile('class Point { constructor Point new() { return this; } }');
+  assert.equal(vm, 'function Point.new 0\npush constant 0\ncall Memory.alloc 1\npop pointer 0\npush pointer 0\nreturn\n');
+});
+
+test('construtor: tipo de retorno diferente do nome da classe é rejeitado', () => {
+  assert.throws(() => compile('class Point { constructor int new() { return this; } }'), /construtor deve retornar o tipo da classe Point, encontrado int/);
+  assert.throws(() => compile('class Point { constructor void new() { return; } }'), /construtor deve retornar o tipo da classe Point, encontrado void/);
+  assert.throws(() => compile('class Point { constructor Other new() { return this; } }'), /construtor deve retornar o tipo da classe Point, encontrado Other/);
+});

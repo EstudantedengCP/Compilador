@@ -13,6 +13,7 @@ class CompilationEngine extends Parser {
     this.className = '';
     this.subroutineName = '';
     this.currentSubroutineKind = '';
+    this.currentReturnType = '';
     this.labelIndex = 0;
     this.classSubroutineKinds = new Map();
   }
@@ -51,7 +52,13 @@ class CompilationEngine extends Parser {
       if (token.value === '}') { if (depth === 0) break; depth--; }
       if (depth === 0 && ['constructor', 'function', 'method'].includes(token.value)) {
         const nameToken = this.tokens[i + 2];
-        if (nameToken?.type === 'identifier') this.classSubroutineKinds.set(nameToken.value, token.value);
+        if (nameToken?.type === 'identifier') {
+          // Nomes de sub-rotina são únicos na classe, qualquer que seja o tipo.
+          if (this.classSubroutineKinds.has(nameToken.value)) {
+            throw new SyntaxError(`Erro sintático (linha ${nameToken.line}, coluna ${nameToken.column}): sub-rotina duplicada: ${nameToken.value}`);
+          }
+          this.classSubroutineKinds.set(nameToken.value, token.value);
+        }
       }
     }
   }
@@ -70,7 +77,12 @@ class CompilationEngine extends Parser {
     this.currentSubroutineKind = kind;
     this.symbols.startSubroutine();
     if (kind === 'method') this.symbols.define('this', this.className, 'argument');
-    if (this.match('void')) this.advance(); else this.type();
+    if (kind === 'constructor' && !this.match(this.className)) {
+      const found = this.peek() ? this.peek().value : 'fim do arquivo';
+      this.fail(`construtor deve retornar o tipo da classe ${this.className}, encontrado ${found}`);
+    }
+    // Guardado para validar os comandos return desta sub-rotina.
+    this.currentReturnType = this.match('void') ? this.advance().value : this.type();
     this.subroutineName = this.consume('identifier').value;
     this.consume('(');
     this.parameterList();
@@ -198,8 +210,14 @@ class CompilationEngine extends Parser {
   }
   returnStatement() {
     this.consume('return');
-    if (!this.match(';')) this.expression();
-    else this.vm.writePush('constant', 0); // retorno void também retorna um valor VM
+    const isVoid = this.currentReturnType === 'void';
+    if (this.match(';')) {
+      if (!isVoid) this.fail(`sub-rotina ${this.subroutineName} deve retornar um valor do tipo ${this.currentReturnType}`);
+      this.vm.writePush('constant', 0); // retorno void também retorna um valor VM
+    } else if (isVoid) {
+      // "return }" continua sendo erro de ";" ausente; só rejeita valor de fato.
+      if (this.peek() && this.peek().value !== '}') this.fail(`sub-rotina void ${this.subroutineName} não pode retornar um valor`);
+    } else this.expression();
     this.consume(';');
     this.vm.writeReturn();
   }
