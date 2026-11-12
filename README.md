@@ -285,6 +285,20 @@ Esses desafios contribuíram para o aprendizado sobre compiladores, organizaçã
 - Os erros de string e de comentário de bloco não fechados não informam a linha.
 - `tests/parser/validar_todos.py` termina com código 1 por causa da divergência documentada no caso `Square/SquareGame.xml`.
 
+## Uso de Inteligência Artificial
+
+Ferramentas de IA foram usadas como apoio, conforme permitido no enunciado. A dupla é responsável pelo código entregue e revisou, testou e validou as alterações.
+
+| Ferramenta e modelo | Finalidade | Como o resultado foi validado |
+| --- | --- | --- |
+| Claude Opus 5.5 (Anthropic), via claude.ai — uso por Lucas Emanoel Amaral Gomes | Implementação da entrada por arquivo ou diretório no `main.js`; criação do `xml.js`; validações de sub-rotinas duplicadas, de `return` e de construtores; correção da varredura de sub-rotinas com strings; testes de regressão; atualização do README; auditoria final e comparação com os programas oficiais | Testes automatizados (`node --test`, Scanner e Parser), testes que falham sem a correção, compilação dos seis programas oficiais e comparação de execução com o VM oficial |
+| ChatGPT (OpenAI), plano gratuito — uso por Lucas Emanoel Amaral Gomes | Revisões independentes das alterações antes de cada commit | Recomendações conferidas e aplicadas somente após revisão da dupla |
+| ChatGPT (OpenAI), modelo GPT-6, plano gratuito — uso por José Augusto Santos Lopes | Apoio para orientar o desenvolvimento progressivo do projeto e a divisão das etapas em commits; compreender e implementar a geração de código VM; explicar e analisar recursos da linguagem Jack (estruturas de controle, chamadas de sub-rotinas, métodos, construtores, arrays e strings); identificar e analisar erros de compilação e validações semânticas; revisar alterações (validação de declarações duplicadas, tipos de retorno e palavras reservadas e chaves dentro de strings); analisar os testes automatizados e interpretar seus resultados; orientar a integração do Commit 03 à `main` pelo Pull Request #1, após autorização do integrante. José Augusto conduziu o trabalho, revisou as sugestões e tomou as decisões de implementação. | Executados por José Augusto no ambiente local: `node --test` (17 testes aprovados, sem falhas, na versão testada por ele), `node tests/scanner/erros.test.js` (4 verificações aprovadas) e `node tests/parser/testes_avancados.js` (8 testes aprovados); compilação dos seis programas oficiais do Project 11; no VM Emulator, Average executado com 10, 20 e 3, exibindo a média esperada, 11. Os demais programas não foram validados integralmente no emulador. |
+
+## Vídeo de demonstração
+
+*Link a ser incluído pela dupla.*
+
 ## Tecnologias utilizadas
 
 - JavaScript
