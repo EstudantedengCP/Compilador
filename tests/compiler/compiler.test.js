@@ -82,3 +82,9 @@ test('chamada de function da própria classe declarada depois continua válida',
   const vm = compile('class Main { function int a() { return b(7); } function int b(int x) { return x; } }');
   assert.match(vm, /function Main\.a 0\npush constant 7\ncall Main\.b 1\nreturn/);
 });
+
+
+test('chamadas qualificadas à própria classe rejeitam nomes inexistentes', () => {
+  assert.throws(() => compile('class A { function void f() { do A.missing(); return; } }'), /sub-rotina não declarada/);
+  assert.throws(() => compile('class A { function void f(A a) { do a.missing(); return; } }'), /sub-rotina não declarada/);
+});
