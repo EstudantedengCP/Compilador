@@ -48,9 +48,10 @@ class CompilationEngine extends Parser {
     let depth = 0;
     for (let i = this.pos; i < this.tokens.length; i++) {
       const token = this.tokens[i];
-      if (token.value === '{') depth++;
-      if (token.value === '}') { if (depth === 0) break; depth--; }
-      if (depth === 0 && ['constructor', 'function', 'method'].includes(token.value)) {
+      // Só símbolos e palavras-chave são estruturais; conteúdo de strings é ignorado.
+      if (token.type === 'symbol' && token.value === '{') depth++;
+      if (token.type === 'symbol' && token.value === '}') { if (depth === 0) break; depth--; }
+      if (depth === 0 && token.type === 'keyword' && ['constructor', 'function', 'method'].includes(token.value)) {
         const nameToken = this.tokens[i + 2];
         if (nameToken?.type === 'identifier') {
           // Nomes de sub-rotina são únicos na classe, qualquer que seja o tipo.

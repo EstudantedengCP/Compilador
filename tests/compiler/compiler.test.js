@@ -147,3 +147,61 @@ test('construtor: tipo de retorno diferente do nome da classe é rejeitado', () 
   assert.throws(() => compile('class Point { constructor void new() { return; } }'), /construtor deve retornar o tipo da classe Point, encontrado void/);
   assert.throws(() => compile('class Point { constructor Other new() { return this; } }'), /construtor deve retornar o tipo da classe Point, encontrado Other/);
 });
+
+// Varredura antecipada de sub-rotinas: conteúdo de strings não é estrutural.
+const scanKinds = source => {
+  const engine = new CompilationEngine(new Scanner(source).tokenize());
+  engine.parse();
+  return Object.fromEntries(engine.classSubroutineKinds);
+};
+
+test('varredura: string com "{" não esconde sub-rotina declarada depois', () => {
+  const src = 'class A { function void f() { do Output.printString("{"); do A.g(1, 2); return; } function int g(int a, int b) { return a; } }';
+  assert.deepEqual(scanKinds(src), { f: 'function', g: 'function' });
+  const vm = compile(src);
+  assert.match(vm, /push constant 1\ncall String\.new 1\npush constant 123\ncall String\.appendChar 2\ncall Output\.printString 1\npop temp 0/);
+  assert.match(vm, /push constant 1\npush constant 2\ncall A\.g 2\npop temp 0/);
+  assert.match(vm, /function A\.g 0\npush argument 0\nreturn/);
+});
+
+test('varredura: string com "}" não encerra a classe antes da hora', () => {
+  const src = 'class A { function void f() { do Output.printString("}"); do g(5); return; } function void g(int x) { return; } }';
+  assert.deepEqual(scanKinds(src), { f: 'function', g: 'function' });
+  const vm = compile(src);
+  assert.match(vm, /push constant 125\ncall String\.appendChar 2\ncall Output\.printString 1/);
+  assert.match(vm, /push constant 5\ncall A\.g 1\npop temp 0/);
+});
+
+test('varredura: strings com "function", "method" e "constructor" não viram declarações', () => {
+  const src = 'class A { function void f() { do Output.printString("function"); do Output.printString("method"); ' +
+    'do Output.printString("constructor"); do Output.printString("function int fake"); return; } method void m() { return; } }';
+  assert.deepEqual(scanKinds(src), { f: 'function', m: 'method' });
+  const vm = compile(src);
+  assert.equal((vm.match(/call Output\.printString 1/g) || []).length, 4);
+  assert.match(vm, /push constant 8\ncall String\.new 1\npush constant 102\ncall String\.appendChar 2/); // "function"
+  assert.throws(() => compile(src.replace('return; } method', 'do fake(); return; } method')), /sub-rotina não declarada: fake/);
+});
+
+test('varredura: chamadas a sub-rotinas declaradas depois de strings com chaves e palavras-chave', () => {
+  const src = 'class A { field int v; ' +
+    'function void f() { do Output.printString("{"); do Output.printString("method"); do A.later(3, 4, 5); return; } ' +
+    'method int run() { do Output.printString("function"); return helper(7) + v; } ' +
+    'function int later(int a, int b, int c) { return a + b + c; } ' +
+    'method int helper(int x) { return x; } }';
+  assert.deepEqual(scanKinds(src), { f: 'function', run: 'method', later: 'function', helper: 'method' });
+  const vm = compile(src);
+  assert.match(vm, /push constant 3\npush constant 4\npush constant 5\ncall A\.later 3\npop temp 0/);
+  // Método local sem prefixo: empilha this e conta o argumento implícito.
+  assert.match(vm, /push pointer 0\npush constant 7\ncall A\.helper 2\npush this 0\nadd\nreturn/);
+  assert.match(vm, /function A\.later 0\n/);
+  assert.match(vm, /function A\.helper 0\npush argument 0\npop pointer 0\npush argument 1\nreturn/);
+});
+
+test('varredura: duplicadas continuam rejeitadas com strings estruturais entre elas', () => {
+  assert.throws(() => compile('class A { function void f() { do Output.printString("{"); return; } function void f() { return; } }'),
+    /sub-rotina duplicada: f/);
+  assert.throws(() => compile('class A { method void m() { do Output.printString("}"); return; } function void m() { return; } }'),
+    /sub-rotina duplicada: m/);
+  // Nome dentro de string não conta como segunda declaração.
+  assert.deepEqual(scanKinds('class A { function void f() { do Output.printString("function void f"); return; } }'), { f: 'function' });
+});
