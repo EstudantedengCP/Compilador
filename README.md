@@ -159,6 +159,18 @@ Para cada arquivo é exibido `OK` ou `ERRO` com a mensagem do erro, seguido de u
 node --test tests/compiler/compiler.test.js
 ```
 
+### Recursos implementados no compilador VM (Projeto 11)
+
+A geração de código VM contempla:
+
+- **Construtores:** alocação de memória com `Memory.alloc` e inicialização de `pointer 0`.
+- **Métodos:** argumento implícito `this` e inicialização do segmento `pointer 0`.
+- **Chamadas de sub-rotinas:** chamadas a métodos por meio de variáveis-objeto e chamadas internas à própria classe.
+- **Arrays:** leitura e atribuição usando `pointer 1` e `that 0`.
+- **Strings:** criação com `String.new` e preenchimento com `String.appendChar`.
+
+O comando principal continua sendo `node main.js`, tanto para um arquivo quanto para um diretório. Não é necessário um segundo executável de compilação VM.
+
 ## Testes e validação
 
 Foram realizados testes para verificar o reconhecimento dos tokens, a análise sintática, a geração de XML e o tratamento de entradas inválidas.
