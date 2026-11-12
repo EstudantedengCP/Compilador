@@ -2,7 +2,7 @@ const Parser = require('../parser/Parser');
 const SymbolTable = require('./SymbolTable');
 const VMWriter = require('./VMWriter');
 
-// Commit 02: condicionais, laços e chamadas de funções (sem objetos).
+// Commit 03: métodos, construtores, arrays e strings.
 // Herda navegação e validação de tokens do Parser do Projeto 10.
 // Sobrescreve os métodos gramaticais para produzir VM, não XML.
 class CompilationEngine extends Parser {
@@ -12,6 +12,7 @@ class CompilationEngine extends Parser {
     this.symbols = new SymbolTable();
     this.className = '';
     this.subroutineName = '';
+    this.currentSubroutineKind = '';
     this.labelIndex = 0;
     this.classSubroutineKinds = new Map();
   }
@@ -66,8 +67,9 @@ class CompilationEngine extends Parser {
   }
   subroutineDec() {
     const kind = this.advance().value;
-    if (kind !== 'function') this.fail('métodos e construtores serão implementados no commit 03');
+    this.currentSubroutineKind = kind;
     this.symbols.startSubroutine();
+    if (kind === 'method') this.symbols.define('this', this.className, 'argument');
     if (this.match('void')) this.advance(); else this.type();
     this.subroutineName = this.consume('identifier').value;
     this.consume('(');
@@ -89,6 +91,14 @@ class CompilationEngine extends Parser {
     this.consume('{');
     while (this.match('var')) this.varDec();
     this.vm.writeFunction(`${this.className}.${this.subroutineName}`, this.symbols.varCount('var'));
+    if (this.currentSubroutineKind === 'constructor') {
+      this.vm.writePush('constant', this.symbols.varCount('field'));
+      this.vm.writeCall('Memory.alloc', 1);
+      this.vm.writePop('pointer', 0);
+    } else if (this.currentSubroutineKind === 'method') {
+      this.vm.writePush('argument', 0);
+      this.vm.writePop('pointer', 0);
+    }
     this.statements();
     this.consume('}');
   }
@@ -110,8 +120,20 @@ class CompilationEngine extends Parser {
     if (!entry) this.fail(`variável não declarada: ${name}`);
     return entry;
   }
-  pushVar(name) { const s = this.symbol(name); this.vm.writePush(this.segment(s), s.index); }
-  popVar(name) { const s = this.symbol(name); this.vm.writePop(this.segment(s), s.index); }
+  pushVar(name) {
+    const s = this.symbol(name);
+    if (s.kind === 'field' && this.currentSubroutineKind === 'function') {
+      this.fail(`função não pode acessar o campo de instância: ${name}`);
+    }
+    this.vm.writePush(this.segment(s), s.index);
+  }
+  popVar(name) {
+    const s = this.symbol(name);
+    if (s.kind === 'field' && this.currentSubroutineKind === 'function') {
+      this.fail(`função não pode modificar o campo de instância: ${name}`);
+    }
+    this.vm.writePop(this.segment(s), s.index);
+  }
   label(prefix) { return `${this.className}.${this.subroutineName}$${prefix}${this.labelIndex++}`; }
   statements() {
     while (this.match('let', 'if', 'while', 'do', 'return')) {
@@ -125,11 +147,21 @@ class CompilationEngine extends Parser {
   letStatement() {
     this.consume('let');
     const name = this.consume('identifier').value;
-    if (this.match('[')) this.fail('arrays serão implementados no commit 03');
+    const array = this.match('[');
+    if (array) {
+      this.pushVar(name);
+      this.consume('['); this.expression(); this.consume(']');
+      this.vm.writeArithmetic('add');
+    }
     this.consume('=');
     this.expression();
     this.consume(';');
-    this.popVar(name);
+    if (array) {
+      this.vm.writePop('temp', 0);
+      this.vm.writePop('pointer', 1);
+      this.vm.writePush('temp', 0);
+      this.vm.writePop('that', 0);
+    } else this.popVar(name);
   }
   ifStatement() {
     this.consume('if'); this.consume('('); this.expression(); this.consume(')');
@@ -191,14 +223,27 @@ class CompilationEngine extends Parser {
       this.vm.writePush('constant', value);
       return;
     }
-    if (['stringConstant','string'].includes(token.type)) this.fail('strings serão implementadas no commit 03');
-    if (this.match('this')) this.fail('objetos serão implementados no commit 03');
-    if (this.match('true','false','null')) {
+    if (['stringConstant','string'].includes(token.type)) {
+      const value = String(this.advance().value);
+      this.vm.writePush('constant', value.length);
+      this.vm.writeCall('String.new', 1);
+      for (const char of value) {
+        if (char.charCodeAt(0) > 32767) this.fail('caractere de string fora do intervalo');
+        this.vm.writePush('constant', char.charCodeAt(0));
+        this.vm.writeCall('String.appendChar', 2);
+      }
+      return;
+    }
+    if (this.match('true','false','null','this')) {
+      if (this.match('this') && this.currentSubroutineKind === 'function') {
+        this.fail('this não pode ser usado em uma function');
+      }
       const value = this.advance().value;
       if (value === 'true') {
         this.vm.writePush('constant', 0);
         this.vm.writeArithmetic('not');
-      } else this.vm.writePush('constant', 0);
+      } else if (value === 'this') this.vm.writePush('pointer', 0);
+      else this.vm.writePush('constant', 0);
       return;
     }
     if (this.match('(')) {
@@ -217,8 +262,13 @@ class CompilationEngine extends Parser {
         return;
       }
       const name = this.consume('identifier').value;
-      if (this.match('[')) this.fail('arrays serão implementados no commit 03');
       this.pushVar(name);
+      if (this.match('[')) {
+        this.consume('['); this.expression(); this.consume(']');
+        this.vm.writeArithmetic('add');
+        this.vm.writePop('pointer', 1);
+        this.vm.writePush('that', 0);
+      }
       return;
     }
     this.fail(`termo inválido: ${token.value}`);
@@ -226,20 +276,38 @@ class CompilationEngine extends Parser {
   subroutineCall() {
     const first = this.consume('identifier').value;
     let functionName;
+    let implicitArgs = 0;
     if (this.match('.')) {
       this.consume('.');
-      const second = this.consume('identifier').value;
-      if (this.symbols.resolve(first)) this.fail('chamadas de métodos em objetos serão implementadas no commit 03');
-      functionName = `${first}.${second}`;
+      const method = this.consume('identifier').value;
+      const receiver = this.symbols.resolve(first);
+      if (receiver) {
+        if (receiver.type === this.className && this.classSubroutineKinds.get(method) && this.classSubroutineKinds.get(method) !== 'method') {
+          this.fail(`sub-rotina ${method} não é método de instância`);
+        }
+        this.pushVar(first);
+        implicitArgs = 1;
+        functionName = `${receiver.type}.${method}`;
+      } else {
+        if (first === this.className && this.classSubroutineKinds.get(method) === 'method') {
+          this.fail(`método ${method} exige um objeto receptor`);
+        }
+        functionName = `${first}.${method}`;
+      }
     } else {
       const kind = this.classSubroutineKinds.get(first);
-      if (kind !== 'function') this.fail(`chamada interna não suportada: ${first} (métodos no commit 03)`);
+      if (!kind) this.fail(`sub-rotina não declarada: ${first}`);
+      if (kind === 'method') {
+        if (this.currentSubroutineKind === 'function') this.fail(`método ${first} exige um objeto receptor`);
+        this.vm.writePush('pointer', 0);
+        implicitArgs = 1;
+      }
       functionName = `${this.className}.${first}`;
     }
     this.consume('(');
-    const count = this.expressionList();
+    const args = this.expressionList();
     this.consume(')');
-    this.vm.writeCall(functionName, count);
+    this.vm.writeCall(functionName, args + implicitArgs);
   }
   expressionList() {
     if (this.match(')')) return 0;
