@@ -122,24 +122,19 @@ Com o Node.js instalado, execute os comandos a partir da raiz do repositório.
 node teste.js
 ```
 
-### Executar a integração completa
+### Projeto 10 — gerar XML (análise léxica e sintática)
 
 ```bash
-node main.js Main.jack Main.xml
+node xml.js Main.jack
 ```
-O programa recebe um arquivo `.jack` como entrada, realiza a análise léxica e sintática e gera um arquivo XML com a árvore de análise sintática.
 
-Exemplo de execução:
-
-```bash
-node main.js Main.jack Main.xml
-```
+O programa recebe um arquivo `.jack`, realiza a análise léxica e sintática e gera um arquivo XML com a árvore de análise sintática, na mesma pasta do arquivo de entrada.
 
 **Arquivo de entrada:** `Main.jack`
 
 **Arquivo de saída:** `Main.xml`
 
-O nome do arquivo XML pode ser definido pelo usuário no segundo argumento do comando.
+Em caso de erro léxico ou sintático, a mensagem é exibida e o programa termina com código de saída 1.
 
 ## Testes e validação
 
