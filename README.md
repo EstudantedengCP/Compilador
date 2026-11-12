@@ -222,6 +222,28 @@ O Parser preservou os 313 tokens recebidos, indicando uma incompatibilidade entr
 
 Essa diferença permanece documentada para investigação.
 
+### Validação do Projeto 11 (código VM)
+
+Os seis programas oficiais do Project 11 foram compilados passando o **diretório** de cada programa:
+
+```bash
+node main.js Seven/
+node main.js Pong/
+```
+
+| Etapa | Programa | Compilação | Execução comparada ao VM oficial ¹ | VM Emulator ² |
+| --- | --- | --- | --- | --- |
+| 1 | Seven | ✅ 1/1 arquivo | ✅ idêntica: imprime `7` | a confirmar |
+| 1 | ConvertToBin | ✅ 1/1 arquivo | ✅ idêntica: bits corretos em `RAM[8001..8016]` para 0, 1, 13, 255, 1000 e 32767 | a confirmar |
+| 2 | Square | ✅ 3/3 arquivos | ✅ idêntica para um roteiro fixo de teclas (setas, `z`, `x`, `q`) | a confirmar |
+| 2 | Average | ✅ 1/1 arquivo | ✅ idêntica: média de 10, 20, 30 = 20 | ✅ média de 10, 20 e 3 = 11 |
+| 2 | Pong | ✅ 4/4 arquivos | ✅ idêntica para um roteiro fixo de teclas | a confirmar |
+| 2 | ComplexArrays | ✅ 1/1 arquivo | ✅ idêntica: nos 5 testes, valor esperado = valor obtido | a confirmar |
+
+¹ O `.vm` gerado e o `.vm` produzido pelo compilador oficial foram executados com as mesmas entradas em um interpretador de VM auxiliar, com as rotinas do sistema operacional simuladas, comparando a saída de texto, as chamadas de `Screen` e a RAM. O código gerado não é idêntico ao oficial (nomes de rótulos, `true` como `push constant 0` + `not` e a ordem base/índice em arrays), mas o comportamento observado foi o mesmo em todos os casos. Essa verificação não substitui o VM Emulator.
+
+² Execução no VM Emulator oficial do Nand2Tetris, a ser registrada pela dupla.
+
 ## Histórico de desenvolvimento — Parser e XmlWriter
 
 O desenvolvimento da minha parte foi organizado em quatro etapas:
@@ -247,6 +269,21 @@ Outro desafio foi integrar o Scanner ao Parser e ao XmlWriter, permitindo que um
 Durante a validação, utilizamos testes automatizados e comparações com arquivos oficiais. Identificamos uma divergência no exemplo `SquareGame`, relacionada à diferença entre os tokens da entrada utilizada e os presentes no XML de referência. Essa situação foi documentada para investigação.
 
 Esses desafios contribuíram para o aprendizado sobre compiladores, organização modular, tratamento de erros, testes automatizados e versionamento com Git e GitHub.
+
+### Desafios do Projeto 11
+
+- **Entrada por diretório:** o compilador precisou passar a aceitar uma pasta, compilar apenas os `.jack` do primeiro nível e gerar cada `.vm` na mesma pasta, sem interromper os demais arquivos quando um deles tem erro.
+- **Preservar o Projeto 10:** como o `main.js` passou a gerar código VM, a geração de XML foi mantida em um ponto de entrada separado (`xml.js`), reaproveitando o Scanner, o Parser e o XmlWriter.
+- **Chamadas a sub-rotinas declaradas depois:** para saber se `f()` é método ou função, a classe é varrida antes da compilação das sub-rotinas. Essa varredura precisou ignorar o conteúdo de strings (por exemplo, `"{"`), que antes alterava a contagem de blocos.
+- **Validações semânticas:** foram acrescentadas verificações de sub-rotinas duplicadas, de `return` compatível com o tipo de retorno e do tipo de retorno de construtores, cada uma com testes de regressão.
+
+## Limitações conhecidas
+
+- Uma sub-rotina sem nenhum comando `return` ainda é compilada (não há análise de fluxo de controle).
+- Não há verificação de tipos das expressões; por exemplo, `function int f() { return true; }` é aceito.
+- O nome do arquivo não é comparado com o nome da classe declarada nele.
+- Os erros de string e de comentário de bloco não fechados não informam a linha.
+- `tests/parser/validar_todos.py` termina com código 1 por causa da divergência documentada no caso `Square/SquareGame.xml`.
 
 ## Tecnologias utilizadas
 
