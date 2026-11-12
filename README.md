@@ -2,16 +2,16 @@ Integrantes do grupo
 
 Integrante 1: Lucas Emanoel Amaral Gomes — Matrícula: 20250071250
 
-Integrante 2: JOSE AUGUSTO SANTOS LOPES — Matrícula: 20260060115
+Integrante 2: José Augusto Santos Lopes — Matrícula: 20260060115
 
 
 
 
-# Compilador Jack — Analisador Léxico, Sintático e Geração XML
+# Compilador Jack — Analisador Léxico, Sintático, Geração de XML e de Código VM
 
 ## Sobre o projeto
 
-Este repositório contém o desenvolvimento de um compilador para a linguagem Jack, como parte do Projeto 10 do curso Nand2Tetris.
+Este repositório contém o desenvolvimento de um compilador para a linguagem Jack, como parte dos Projetos 10 e 11 do curso Nand2Tetris.
 
 O projeto é dividido em duas partes principais:
 
@@ -112,6 +112,12 @@ O arquivo `xml.js` integra o Scanner, o Parser e o XmlWriter para gerar a repres
 
 O arquivo `main.js` é o ponto de entrada do JackCompiler: integra o Scanner e o CompilationEngine para gerar código VM a partir de um arquivo `.jack` ou de um diretório com arquivos `.jack` (Projeto 11).
 
+## Requisitos
+
+- **Node.js 18 ou superior** (os testes usam o módulo nativo `node:test`).
+- Nenhuma dependência externa: o projeto usa apenas módulos nativos do Node.js, então não é necessário `npm install`.
+- **Python 3** apenas para o script opcional de validação do Parser (`tests/parser/validar_todos.py`).
+
 ## Como executar o projeto
 
 Com o Node.js instalado, execute os comandos a partir da raiz do repositório.
@@ -163,11 +169,14 @@ node --test tests/compiler/compiler.test.js
 
 A geração de código VM contempla:
 
+- **Expressões e comandos (Etapa 1):** operadores binários e unários, `*` e `/` via `Math.multiply` e `Math.divide`, constantes (`true` = -1, `false` e `null` = 0), `let`, `if`/`else`, `while`, `do` (descarta o retorno com `pop temp 0`) e `return` (função `void` retorna `push constant 0`), com rótulos únicos por `if` e `while`.
+- **Tabela de símbolos:** dois escopos (classe e sub-rotina); `static` → `static`, `field` → `this`, parâmetro → `argument`, `var` → `local`. Em métodos, `argument 0` é o objeto e os parâmetros começam em `argument 1`.
 - **Construtores:** alocação de memória com `Memory.alloc` e inicialização de `pointer 0`.
 - **Métodos:** argumento implícito `this` e inicialização do segmento `pointer 0`.
 - **Chamadas de sub-rotinas:** chamadas a métodos por meio de variáveis-objeto e chamadas internas à própria classe.
 - **Arrays:** leitura e atribuição usando `pointer 1` e `that 0`.
 - **Strings:** criação com `String.new` e preenchimento com `String.appendChar`.
+- **Validações semânticas:** variável não declarada, uso de `this` ou de campos em `function`, chamada de método sem objeto receptor, sub-rotina inexistente ou duplicada, `return` incompatível com o tipo `void`/não `void` e construtor cujo tipo de retorno não é a própria classe.
 
 O comando principal continua sendo `node main.js`, tanto para um arquivo quanto para um diretório. Não é necessário um segundo executável de compilação VM.
 
