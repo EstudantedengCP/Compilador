@@ -18,6 +18,8 @@ O projeto é dividido em duas partes principais:
 - **Analisador léxico (Scanner):** responsável por identificar e classificar os tokens do código Jack.
 - **Analisador sintático (Parser):** responsável por reconhecer as estruturas da linguagem e gerar uma representação em XML.
 
+Na continuação (Projeto 11), o repositório também inclui o **JackCompiler**, que gera código VM a partir dos programas Jack (`src/compiler/`).
+
 ## Minha contribuição — Parser e XmlWriter
 
 Minha responsabilidade no projeto foi desenvolver o analisador sintático e a geração de XML.
@@ -82,12 +84,18 @@ Compilador/
 ├── src/
 │   ├── scanner/
 │   │   └── Scanner.js
-│   └── parser/
-│       ├── Parser.js
-│       └── XmlWriter.js
+│   ├── parser/
+│   │   ├── Parser.js
+│   │   └── XmlWriter.js
+│   └── compiler/
+│       ├── CompilationEngine.js
+│       ├── SymbolTable.js
+│       └── VMWriter.js
 ├── tests/
 │   ├── scanner/
 │   │   └── erros.test.js
+│   ├── compiler/
+│   │   └── compiler.test.js
 │   └── parser/
 │       ├── referencias/
 │       ├── testes_avancados.js
@@ -95,11 +103,14 @@ Compilador/
 │       ├── validar_oficial.py
 │       └── validar_todos.py
 ├── main.js
+├── xml.js
 ├── teste.js
 └── README.md
 ```
 
-O arquivo `main.js` é responsável por integrar o Scanner, o Parser e o XmlWriter, permitindo executar a análise completa de um programa Jack e gerar sua representação XML.
+O arquivo `xml.js` integra o Scanner, o Parser e o XmlWriter para gerar a representação XML de um programa Jack (Projeto 10).
+
+O arquivo `main.js` é o ponto de entrada do JackCompiler: integra o Scanner e o CompilationEngine para gerar código VM a partir de um arquivo `.jack` ou de um diretório com arquivos `.jack` (Projeto 11).
 
 ## Como executar o projeto
 
